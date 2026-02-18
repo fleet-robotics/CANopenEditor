@@ -90,35 +90,35 @@ namespace ODEditor
             /* get offests */
             offsets = new List<int>();
 
-            if (textBox_offsets.Text.Contains("-"))
+            // First try to parse as range (e.g., "1-5" or "-5--1")
+            MatchCollection matches = System.Text.RegularExpressions.Regex.Matches(textBox_offsets.Text, pattern);
+            if (matches.Count != 0)
             {
-                MatchCollection matches = System.Text.RegularExpressions.Regex.Matches(textBox_offsets.Text, pattern);
-                if (matches.Count != 0)
+                foreach (System.Text.RegularExpressions.Match m in matches)
                 {
-                    foreach (System.Text.RegularExpressions.Match m in matches)
-                    {
-                        int value1 = Int32.Parse(m.Groups[1].Value);
-                        int value2 = Int32.Parse(m.Groups[3].Value);
+                    int value1 = Int32.Parse(m.Groups[1].Value);
+                    int value2 = Int32.Parse(m.Groups[3].Value);
 
-                        if ((value2 > value1) && (m.Groups[2].Value == "-"))
+                    if ((value2 > value1) && (m.Groups[2].Value == "-"))
+                    {
+                        for (int i = value1; i <= value2; i++)
                         {
-                            for (int i = value1; i <= value2; i++)
+                            try
                             {
-                                try
-                                {
-                                    offsets.Add(i);
-                                }
-                                catch (Exception)
-                                {
-                                    MessageBox.Show("Syntax error in Index Offset!\n\nValid value is single signed number or space separated list of multiple signed numbers or a range seprated by '-'.");
-                                    return false;
-                                }
+                                offsets.Add(i);
+                            }
+                            catch (Exception)
+                            {
+                                MessageBox.Show("Syntax error in Index Offset!\n\nValid value is single signed number or space separated list of multiple signed numbers or a range seprated by '-'.");
+                                return false;
                             }
                         }
                     }
                 }
             }
-            else
+
+            // If no ranges were found, parse as individual numbers (including negative)
+            if (offsets.Count == 0)
             {
                 string[] str = textBox_offsets.Text.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string s in str)
@@ -182,7 +182,7 @@ namespace ODEditor
                 foreach (int o in offsets)
                 {
                     int newIndex = (int)od.Index + o;
-                    bool err = newIndex <= 0 || newIndex > 0xFFFF;
+                    bool err = newIndex < 0 || newIndex > 0xFFFF;
 
                     dataGridView.Rows[rowIdx].Cells[cellIdx].Value = err ? $"{newIndex}" : $"0x{newIndex:X4}";
 
@@ -191,7 +191,7 @@ namespace ODEditor
 
                     if (!err)
                     {
-                        
+
                         newIndexes.Add(newIndex);
                         err = eds.ods.ContainsKey((UInt16)newIndex);
                     }
